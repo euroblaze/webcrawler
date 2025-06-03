@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+crawl4ai
+pydantic
+aiofiles
+sqlite-utils
+bleach
