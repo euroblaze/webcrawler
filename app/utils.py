@@ -3,9 +3,13 @@ import bleach
 from pathlib import Path
 import os
 from crawl4ai import crawl_url
+import logging
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
-LOG_FILE = DATA_DIR / "crawl4ai.log"
+LOG_DIR = Path(os.environ.get("LOG_DIR", "./logs"))
+LOG_FILE = LOG_DIR / "crawl4ai.log"
+
+LOG_DIR.mkdir(parents=True, exist_ok=True)  # ensure it exists
 
 logging.basicConfig(
     level=logging.INFO,
