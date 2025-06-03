@@ -7,5 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/data
+      - ./logs:/logs 
     environment:
       - DATA_DIR=/data
+      - LOG_DIR=/logs
