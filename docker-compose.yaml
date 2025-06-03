@@ -1,0 +1,11 @@
+version: '3.9'
+
+services:
+  crawl4ai-service:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATA_DIR=/data
