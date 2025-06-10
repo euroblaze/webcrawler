@@ -68,7 +68,7 @@ async def handle_llm_qa(
         last_q_index = url.rfind('?q=')
         if last_q_index != -1:
             url = url[:last_q_index]
-
+        query = query or config['llm'].get("llm_prompt","")    
         # Get markdown content
         async with AsyncWebCrawler() as crawler:
             result = await crawler.arun(url)
@@ -84,17 +84,18 @@ async def handle_llm_qa(
     Content:
     {content}
 
-    Question: {query}
+    Job: 
+    {query}
 
     Answer:"""
 
         response = perform_completion_with_backoff(
             provider=config["llm"]["provider"],
             prompt_with_variables=prompt,
-            api_token=os.environ.get(config["llm"].get("api_key_env", ""))
+            api_token=config["llm"]["api_key"] or os.environ.get(config["llm"].get("api_key_env", ""))
         )
 
-        return response.choices[0].message.content
+        return content,response.choices[0].message.content
     except Exception as e:
         logger.error(f"QA processing error: {str(e)}", exc_info=True)
         raise HTTPException(

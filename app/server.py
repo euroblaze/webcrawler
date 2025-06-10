@@ -397,14 +397,17 @@ async def llm_endpoint(
     request: Request,
     url: str = Path(...),
     q: str = Query(...),
+    llm_config: Dict = {},
     _td: Dict = Depends(token_dep),
 ):
     if not q:
         raise HTTPException(400, "Query parameter 'q' is required")
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
-    answer = await handle_llm_qa(url, q, config)
-    return JSONResponse({"answer": answer})
+    if llm_config:
+        config["llm"].update(llm_config)
+    content, answer = await handle_llm_qa(url, q, config)
+    return JSONResponse({"answer": answer,"crawl_content":content})
 
 
 @app.get("/schema")
