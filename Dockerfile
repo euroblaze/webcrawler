@@ -7,9 +7,6 @@ LABEL c4ai.version=$C4AI_VER
 
 # Set build arguments
 ARG APP_HOME=/app
-ARG GITHUB_REPO=https://github.com/unclecode/crawl4ai.git
-ARG GITHUB_BRANCH=main
-ARG USE_LOCAL=true
 
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONHASHSEED=random \
@@ -115,38 +112,9 @@ COPY app/supervisord.conf .
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN if [ "$INSTALL_TYPE" = "all" ] ; then \
-        pip install --no-cache-dir \
-            torch \
-            torchvision \
-            torchaudio \
-            scikit-learn \
-            nltk \
-            transformers \
-            tokenizers && \
-        python -m nltk.downloader punkt stopwords ; \
-    fi
-
-RUN if [ "$INSTALL_TYPE" = "all" ] ; then \
-        pip install "/tmp/project/[all]" && \
-        python -m crawl4ai.model_loader ; \
-    elif [ "$INSTALL_TYPE" = "torch" ] ; then \
-        pip install "/tmp/project/[torch]" ; \
-    elif [ "$INSTALL_TYPE" = "transformer" ] ; then \
-        pip install "/tmp/project/[transformer]" && \
-        python -m crawl4ai.model_loader ; \
-    else \
-        pip install "/tmp/project" ; \
-    fi
-
-RUN pip install --no-cache-dir --upgrade pip && \
-    /tmp/install.sh && \
-    python -c "import crawl4ai; print('✅ crawl4ai is ready to rock!')" && \
-    python -c "from playwright.sync_api import sync_playwright; print('✅ Playwright is feeling dramatic!')"
-
 RUN crawl4ai-setup
 
-RUN playwright install --with-deps
+# RUN playwright install --with-deps
 
 RUN mkdir -p /home/appuser/.cache/ms-playwright \
     && cp -r /root/.cache/ms-playwright/chromium-* /home/appuser/.cache/ms-playwright/ \
@@ -174,7 +142,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
         exit 1; \
     fi && \
     redis-cli ping > /dev/null && \
-    curl -f http://localhost:8000/health || exit 1'
+    curl -f http://localhost:11235/health || exit 1'
 
 EXPOSE 6379
 # Switch to the non-root user before starting the application

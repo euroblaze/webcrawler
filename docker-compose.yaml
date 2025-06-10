@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   crawl4ai-service:
-    image: ${IMAGE:-unclecode/crawl4ai:${TAG:-latest}}
+    image: unclecode/crawl4ai:latest
     container_name: crawl4ai-service
     build:
       context: .
@@ -18,10 +18,10 @@ services:
       - ./data:/data
       - ./logs:/logs
     expose:
-      - "8000"  # Only accessible inside Docker network
+      - "11235"  # Only accessible inside Docker network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD", "curl -f http://localhost:11235/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
