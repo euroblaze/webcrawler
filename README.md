@@ -88,6 +88,5 @@ crawl_timeout = 10     # Default timeout per crawl (seconds)
 
 ---
 
-## 📝 License
+![image](https://github.com/user-attachments/assets/6bdc10ef-082d-4b77-a52b-ced7b461bc18)
 
-MIT License.
