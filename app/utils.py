@@ -1,71 +1,66 @@
+import dns.resolver
 import logging
-import bleach
+import yaml
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
-import os
-from crawl4ai import crawl_url
-import logging
+from fastapi import Request
+from typing import Dict, Optional
 
-DATA_DIR = Path(os.environ.get("DATA_DIR", "./data"))
-LOG_DIR = Path(os.environ.get("LOG_DIR", "./logs"))
-LOG_FILE = LOG_DIR / "crawl4ai.log"
+class TaskStatus(str, Enum):
+    PROCESSING = "processing"
+    FAILED = "failed"
+    COMPLETED = "completed"
 
-LOG_DIR.mkdir(parents=True, exist_ok=True)  # ensure it exists
+class FilterType(str, Enum):
+    RAW = "raw"
+    FIT = "fit"
+    BM25 = "bm25"
+    LLM = "llm"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE),
-        logging.StreamHandler()
-    ]
-)
+def load_config() -> Dict:
+    """Load and return application configuration."""
+    config_path = Path(__file__).parent / "config.yml"
+    with open(config_path, "r") as config_file:
+        return yaml.safe_load(config_file)
 
-COUNTER_FILE = DATA_DIR / "crawl_id.counter"
-if not COUNTER_FILE.exists():
-    COUNTER_FILE.write_text("0")
-
-def generate_crawl_id() -> str:
-    try:
-        current = int(COUNTER_FILE.read_text()) + 1
-        COUNTER_FILE.write_text(str(current))
-        return f"{current:06d}"
-    except Exception as e:
-        logging.error(f"Failed to generate crawl ID: {e}")
-        raise
-
-def save_markdown(crawl_id: str, content: str):
-    file_path = DATA_DIR / f"{crawl_id}.md"
-    try:
-        file_path.write_text(content)
-    except Exception as e:
-        logging.error(f"Failed to save file {file_path}: {e}")
-        raise
-    return file_path
-
-def crawl_and_store(url: str, crawl_id: str, crawl_depth: int = None, crawl_timeout: int = None):
-    import configparser
-    import time
-    config = configparser.ConfigParser()
-    config.read(DATA_DIR / "../crawl.config")
-    default_depth = int(config.get("settings", "crawl_depth", fallback="2"))
-    default_timeout = int(config.get("settings", "crawl_timeout", fallback="10"))
-
-    depth = crawl_depth if crawl_depth is not None else default_depth
-    timeout = crawl_timeout if crawl_timeout is not None else default_timeout
-
-    start_time = time.time()
-    try:
-        raw_content = crawl_url(url, return_format="markdown", max_depth=depth, timeout=timeout)
-    except Exception as e:
-        logging.error(f"Crawl failed for {crawl_id} with error: {e}")
-        raise
-    duration = time.time() - start_time
-    logging.info(f"Crawl completed for {crawl_id} in {duration:.2f} seconds with timeout={timeout}s")
-
-    sanitized_content = bleach.clean(
-        raw_content,
-        tags=["p", "a", "ul", "li", "strong", "em", "code"],
-        attributes={"a": ["href"]},
-        strip=True
+def setup_logging(config: Dict) -> None:
+    """Configure application logging."""
+    logging.basicConfig(
+        level=config["logging"]["level"],
+        format=config["logging"]["format"]
     )
-    return save_markdown(crawl_id, sanitized_content)
+
+def get_base_url(request: Request) -> str:
+    """Get base URL including scheme and host."""
+    return f"{request.url.scheme}://{request.url.netloc}"
+
+def is_task_id(value: str) -> bool:
+    """Check if the value matches task ID pattern."""
+    return value.startswith("llm_") and "_" in value
+
+def datetime_handler(obj: any) -> Optional[str]:
+    """Handle datetime serialization for JSON."""
+    if hasattr(obj, 'isoformat'):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
+def should_cleanup_task(created_at: str, ttl_seconds: int = 3600) -> bool:
+    """Check if task should be cleaned up based on creation time."""
+    created = datetime.fromisoformat(created_at)
+    return (datetime.now() - created).total_seconds() > ttl_seconds
+
+def decode_redis_hash(hash_data: Dict[bytes, bytes]) -> Dict[str, str]:
+    """Decode Redis hash data from bytes to strings."""
+    return {k.decode('utf-8'): v.decode('utf-8') for k, v in hash_data.items()}
+
+
+
+def verify_email_domain(email: str) -> bool:
+    try:
+        domain = email.split('@')[1]
+        # Try to resolve MX records for the domain.
+        records = dns.resolver.resolve(domain, 'MX')
+        return True if records else False
+    except Exception as e:
+        return False

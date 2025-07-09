@@ -1,13 +1,32 @@
-version: '3.9'
+version: '3.8'
 
 services:
   crawl4ai-service:
-    build: .
-    ports:
-      - "8000:8000"
+    image: unclecode/crawl4ai:latest
+    container_name: crawl4ai-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_TYPE: default  # or "all", "transformer", "torch"
+        ENABLE_GPU: false
+    environment:
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      PYTHON_ENV: production
     volumes:
       - ./data:/data
-      - ./logs:/logs 
-    environment:
-      - DATA_DIR=/data
-      - LOG_DIR=/logs
+      - ./logs:/logs
+    expose:
+      - "11235"  # Only accessible inside Docker network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl -f http://localhost:11235/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
+networks:
+  crawl4ai-net:
+    external: true
